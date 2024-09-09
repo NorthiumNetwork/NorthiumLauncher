@@ -38,9 +38,9 @@ If you download from the [Releases](https://github.com/northiumnetwork/NorthiumN
 
 | Platform | File |
 | -------- | ---- |
-| Windows x64 | `Helios-Launcher-setup-VERSION.exe` |
-| macOS x64 | `Helios-Launcher-setup-VERSION-x64.dmg` |
-| macOS arm64 | `Helios-Launcher-setup-VERSION-arm64.dmg` |
-| Linux x64 | `Helios-Launcher-setup-VERSION.AppImage` |
+| Windows x64 | `Northium-Launcher-setup-VERSION.exe` |
+| macOS x64 | `Northium-Launcher-setup-VERSION-x64.dmg` |
+| macOS arm64 | `Northium-Launcher-setup-VERSION-arm64.dmg` |
+| Linux x64 | `Northium-Launcher-setup-VERSION.AppImage` |
 
 ### See you ingame.
