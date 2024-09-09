@@ -19,6 +19,9 @@ const Lang = require('./langloader')
 
 const log = LoggerUtil.getLogger('AuthManager')
 
+// Addons
+const { v4: uuidv4 } = require('uuid');
+
 // Error messages
 
 function microsoftErrorDisplayable(errorCode) {
@@ -140,32 +143,52 @@ function mojangErrorDisplayable(errorCode) {
  * @returns {Promise.<Object>} Promise which resolves the resolved authenticated account object.
  */
 exports.addMojangAccount = async function(username, password) {
-    try {
-        const response = await MojangRestAPI.authenticate(username, password, ConfigManager.getClientToken())
-        console.log(response)
-        if(response.responseStatus === RestResponseStatus.SUCCESS) {
+    // Check if the user is logging in with a cracked account (no password provided)
+    if (!password) {
+        // Create a fake session object for the cracked account
+        const fakeUUID = uuidv4(); // Generate a random UUID for the cracked account
+        const fakeAccessToken = uuidv4(); // Generate a random token (doesn't have to be functional)
+        const fakeProfileName = username; // Use the provided username as the profile name
 
-            const session = response.data
-            if(session.selectedProfile != null){
-                const ret = ConfigManager.addMojangAuthAccount(session.selectedProfile.id, session.accessToken, username, session.selectedProfile.name)
-                if(ConfigManager.getClientToken() == null){
-                    ConfigManager.setClientToken(session.clientToken)
-                }
-                ConfigManager.save()
-                return ret
-            } else {
-                return Promise.reject(mojangErrorDisplayable(MojangErrorCode.ERROR_NOT_PAID))
-            }
+        // Store the fake account in the config manager as if it's a Mojang account
+        const ret = ConfigManager.addMojangAuthAccount(fakeUUID, fakeAccessToken, username, fakeProfileName);
 
-        } else {
-            return Promise.reject(mojangErrorDisplayable(response.mojangErrorCode))
+        // Optionally, set a fake client token if not set
+        if (ConfigManager.getClientToken() == null) {
+            ConfigManager.setClientToken(uuidv4()); // Generate and set a client token
         }
-        
-    } catch (err){
-        log.error(err)
-        return Promise.reject(mojangErrorDisplayable(MojangErrorCode.UNKNOWN))
+
+        // Save the changes to the config
+        ConfigManager.save();
+
+        // Return the fake account data as if it's a valid Mojang account
+        return ret;
     }
-}
+
+    // Otherwise, continue with real Mojang authentication for legitimate accounts
+    try {
+        const response = await MojangRestAPI.authenticate(username, password, ConfigManager.getClientToken());
+        if (response.responseStatus === RestResponseStatus.SUCCESS) {
+            const session = response.data;
+            if (session.selectedProfile != null) {
+                const ret = ConfigManager.addMojangAuthAccount(session.selectedProfile.id, session.accessToken, username, session.selectedProfile.name);
+                if (ConfigManager.getClientToken() == null) {
+                    ConfigManager.setClientToken(session.clientToken);
+                }
+                ConfigManager.save();
+                return ret;
+            } else {
+                return Promise.reject(mojangErrorDisplayable(MojangErrorCode.ERROR_NOT_PAID));
+            }
+        } else {
+            return Promise.reject(mojangErrorDisplayable(response.mojangErrorCode));
+        }
+    } catch (err) {
+        log.error(err);
+        return Promise.reject(mojangErrorDisplayable(MojangErrorCode.UNKNOWN));
+    }
+};
+
 
 const AUTH_MODE = { FULL: 0, MS_REFRESH: 1, MC_REFRESH: 2 }
 
@@ -273,8 +296,11 @@ exports.addMicrosoftAccount = async function(authCode) {
  * @param {string} uuid The UUID of the account to be removed.
  * @returns {Promise.<void>} Promise which resolves to void when the action is complete.
  */
-exports.removeMojangAccount = async function(uuid){
-    try {
+exports.removeMojangAccount = function(uuid){
+    //const authAcc = ConfigManager.getAuthAccount(uuid)
+    ConfigManager.removeAuthAccount(uuid)
+    ConfigManager.save()
+    /*try {
         const authAcc = ConfigManager.getAuthAccount(uuid)
         const response = await MojangRestAPI.invalidate(authAcc.accessToken, ConfigManager.getClientToken())
         if(response.responseStatus === RestResponseStatus.SUCCESS) {
@@ -288,7 +314,7 @@ exports.removeMojangAccount = async function(uuid){
     } catch (err){
         log.error('Error while removing account', err)
         return Promise.reject(err)
-    }
+    }*/
 }
 
 /**
